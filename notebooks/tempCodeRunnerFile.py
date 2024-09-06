@@ -1,8 +1,8 @@
 import pandas as pd
-from notebooks.data_loader import get_historical_data
-from notebooks.feature_engineering import add_technical_indicators, add_lagged_features
-from notebooks.model_training import prepare_lstm_data, train_lstm_model, predict_next_day
-from notebooks.evaluation import evaluate_model, plot_predictions
+from utils.data_loader import get_historical_data
+from utils.feature_engineering import add_technical_indicators, add_lagged_features
+from utils.model_training import prepare_lstm_data, train_lstm_model
+from utils.evaluation import evaluate_model, plot_predictions
 
 # Step 1: Load the historical data
 ticker = input("Enter the stock ticker (e.g., NVDA): ")
@@ -29,7 +29,3 @@ predicted_prices = scaler.inverse_transform(predicted_prices)  # Inverse scaling
 # Step 6: Evaluate the model and plot predictions
 evaluate_model(data['Close'].values[-len(predicted_prices):], predicted_prices.flatten())
 plot_predictions(data[-len(predicted_prices):], data['Close'].values[-len(predicted_prices):], predicted_prices.flatten())
-
-# Step 7: Predict the next day's stock price
-predicted_next_price = predict_next_day(model, data, scaler)
-print(f"Predicted stock price for the next day: {predicted_next_price}")
