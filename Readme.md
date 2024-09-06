@@ -1,0 +1,2 @@
+When you run the main.py file, it will train the model and save the model to a file called "model.h5". You can then use the model to make predictions on new data.
+If the code is runned at trading time of a trading day, the prediction is predicting the closing price of the stock of the date the you run the code 
