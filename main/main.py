@@ -4,12 +4,13 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score
 import tensorflow as tf
+import keras 
 import matplotlib.pyplot as plt
+import os
+import re
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
-import os
-import re
 
 # ----------------------- Data Loader -----------------------
 def get_historical_data(ticker, period):
@@ -148,21 +149,25 @@ def evaluate_model(actual, predicted):
     print(f'R2 Score: {r2}')
     return mse, r2
 
-def plot_predictions(data, actual, predicted, future=False):
+def plot_predictions(dates, real_prices=None, predicted_prices=None, future=False):
     plt.figure(figsize=(10, 6))
     
+    # If it's a future prediction, plot only the predicted future prices
     if future:
-        # For future predictions, only plot the predicted prices and dates
-        plt.plot(data.index, predicted, color='green', label='Predicted Future Prices')
+        plt.plot(dates, predicted_prices, label="Predicted Future Prices", color="green")
+        for i, txt in enumerate(predicted_prices):
+            plt.annotate(f"{txt:.2f}", (dates[i], predicted_prices[i]), textcoords="offset points", xytext=(0, 5), ha='center')
     else:
-        # For historical data, plot both actual and predicted prices
-        plt.plot(data.index, actual, color='blue', label='Actual Prices')
-        plt.plot(data.index, predicted, color='red', linestyle='--', label='Predicted Prices')
-
+        # Plot the actual and predicted prices for past predictions
+        plt.plot(dates, real_prices, label="Real Prices", color="blue")
+        plt.plot(dates, predicted_prices, label="Predicted Prices", color="red")
+    
+    # Common title and labels
     plt.title("Stock Price Prediction")
     plt.xlabel("Date")
     plt.ylabel("Stock Price")
     plt.legend()
+    plt.grid(True)
     plt.show()
 
 # ------------------------ Prediction Accuracy ------------------------
@@ -187,8 +192,14 @@ def parse_prediction_input():
     
     value, interval = match.groups()
     value = int(value)  # Convert the numeric part to an integer
+    
+    # Normalize singular/plural intervals (convert 'day' to 'days' and 'hour' to 'hours')
+    if interval.startswith('day'):
+        interval = 'days'
+    elif interval.startswith('hour'):
+        interval = 'hours'
+    
     return value, interval
-
 
 def future_predictions(data, model, scaler, lookback, predict_value, interval='days'):
     """Generates future predictions for a specified number of days or hours."""
@@ -201,6 +212,10 @@ def future_predictions(data, model, scaler, lookback, predict_value, interval='d
         future_predictions.append(future_pred_rescaled[0][0])
         last_data = np.append(last_data[1:], future_pred, axis=0)
 
+    # Ensure 'data' is a DataFrame to access the index
+    if isinstance(data, np.ndarray):
+        data = pd.DataFrame(data, columns=['Close'])
+    
     # Get the last date from the original data (assuming it's a pandas DataFrame)
     last_date = pd.to_datetime(data.index[-1])  # Get the last valid date from the original data
     
@@ -214,11 +229,10 @@ def future_predictions(data, model, scaler, lookback, predict_value, interval='d
     
     return future_predictions, future_dates
 
-
 # ------------------------ Main Script -----------------------
 try:
     # Step 1: Get period input for flexibility
-    period = get_period_input()
+    period = get_period_input()  # Follow the prompts: type 'days' or 'years' and then the corresponding number
 
     # Step 2: Load the historical data
     ticker = input("Enter the stock ticker (e.g., NVDA): ")
@@ -256,13 +270,18 @@ try:
     accuracy = calculate_accuracy(test_data.values[-len(predicted_prices):], predicted_prices.flatten())
 
     # Step 12: Get future prediction input
-    predict_value, interval = parse_prediction_input()
+    predict_value, interval = parse_prediction_input()  # e.g., '1 day' or '5 hours'
 
     # Step 13: Predict future prices (for specified days or hours)
     future_prices, future_dates = future_predictions(scaled_train_data, model, scaler_train, lookback, predict_value, interval)
 
-    # Step 14: Plot the future predictions
-    plot_predictions(pd.DataFrame(index=future_dates), None, future_prices, future=True)
+    # Step 14: Print and plot the future predictions
+    print(f"Predicted prices for the next {predict_value} {interval}:")
+    for i, price in enumerate(future_prices):
+        print(f"{future_dates[i].strftime('%Y-%m-%d %H:%M:%S')} - Predicted Price: {price:.2f}")
+
+    # Plot the future predictions with dates and values displayed on the graph
+    plot_predictions(future_dates, None, future_prices, future=True)
 
 except ValueError as ve:
     print(f"ValueError: {ve}")
